@@ -71,6 +71,8 @@ private:
   float m_z_angle, m_z_speed;
   float m_hSpeed;
 
+  void add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color);
+  
   void draw_bar(GLfloat x_offset, GLfloat z_offset, GLfloat height, GLfloat red, GLfloat green, GLfloat blue);
   void draw_bars(void);
 
@@ -111,8 +113,8 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   SetModeSetting(kodi::GetSettingInt("mode"));
   m_y_fixedAngle = kodi::GetSettingInt("rotation_angle");
 
-  m_vertex_buffer_data.resize(48);
-  m_color_buffer_data.resize(48);
+  m_vertex_buffer_data.resize(36);
+  m_color_buffer_data.resize(36);
 }
 
 bool CVisualizationSpectrum::Start(int channels, int samplesPerSec, int bitsPerSample, std::string songName)
@@ -269,72 +271,29 @@ bool CVisualizationSpectrum::OnEnabled()
   return true;
 }
 
-void CVisualizationSpectrum::draw_bar(GLfloat x_offset, GLfloat z_offset, GLfloat height, GLfloat red, GLfloat green, GLfloat blue )
+void CVisualizationSpectrum::add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color)
+{
+  m_vertex_buffer_data.push_back(a); m_vertex_buffer_data.push_back(b); // line-mode: 1st line
+  m_vertex_buffer_data.push_back(c); m_vertex_buffer_data.push_back(c);
+  m_vertex_buffer_data.push_back(d); m_vertex_buffer_data.push_back(a); // line-mode: 2nd line
+  
+  for (int i=0; i < 6; i++)
+    m_color_buffer_data.push_back(color);
+}
+
+void CVisualizationSpectrum::draw_bar(GLfloat x_mid, GLfloat z_mid, GLfloat height, GLfloat red, GLfloat green, GLfloat blue )
 {
   GLfloat width = 0.1f;
-  m_vertex_buffer_data =
-  {
-    // Bottom
-    { x_offset + width, 0.0f,   z_offset + width },
-    { x_offset,         0.0f,   z_offset },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset + width, 0.0f,   z_offset + width },
-    { x_offset,         0.0f,   z_offset + width },
-    { x_offset,         0.0f,   z_offset },
 
-    { x_offset,         0.0f,   z_offset + width },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset + width, 0.0f,   z_offset + width },
-    { x_offset,         0.0f,   z_offset + width },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset,         0.0f,   z_offset },
+  GLfloat left  = x_mid - width / 2.0f;
+  GLfloat right = x_mid + width / 2.0f;
 
-    // Side
-    { x_offset,         0.0f,   z_offset },
-    { x_offset,         0.0f,   z_offset + width },
-    { x_offset,         height, z_offset + width },
-    { x_offset,         0.0f,   z_offset },
-    { x_offset,         height, z_offset + width },
-    { x_offset,         height, z_offset },
+  GLfloat back  = z_mid - width / 2.0f;
+  GLfloat front = z_mid + width / 2.0f;
 
-    { x_offset + width, height, z_offset },
-    { x_offset,         0.0f,   z_offset },
-    { x_offset,         height, z_offset },
-    { x_offset + width, height, z_offset },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset,         0.0f,   z_offset },
-
-    { x_offset,         height, z_offset + width },
-    { x_offset,         0.0f,   z_offset + width },
-    { x_offset + width, 0.0f,   z_offset + width },
-    { x_offset + width, height, z_offset + width },
-    { x_offset,         height, z_offset + width },
-    { x_offset + width, 0.0f,   z_offset + width },
-
-    { x_offset + width, height, z_offset + width },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset + width, height, z_offset },
-    { x_offset + width, 0.0f,   z_offset },
-    { x_offset + width, height, z_offset + width },
-    { x_offset + width, 0.0f,   z_offset + width },
-
-    // Top
-    { x_offset + width, height, z_offset + width },
-    { x_offset + width, height, z_offset },
-    { x_offset,         height, z_offset },
-    { x_offset + width, height, z_offset + width },
-    { x_offset,         height, z_offset },
-    { x_offset,         height, z_offset + width },
-
-    { x_offset,         height, z_offset + width },
-    { x_offset + width, height, z_offset },
-    { x_offset,         height, z_offset },
-    { x_offset + width, height, z_offset },
-    { x_offset + width, height, z_offset + width },
-    { x_offset,         height, z_offset + width }
-  };
-
-  float sideMlpy1, sideMlpy2, sideMlpy3, sideMlpy4;
+  glm::vec3 color = {red, green, blue};
+  
+  GLfloat sideMlpy1, sideMlpy2, sideMlpy3, sideMlpy4;
   if (m_mode == GL_TRIANGLES)
   {
     sideMlpy1 = 0.5f;
@@ -347,68 +306,62 @@ void CVisualizationSpectrum::draw_bar(GLfloat x_offset, GLfloat z_offset, GLfloa
     sideMlpy1 = sideMlpy2 = sideMlpy3 = sideMlpy4 = 1.0f;
   }
 
-  // One color for each vertex. They were generated randomly.
-  m_color_buffer_data =
-  {
-    // Bottom
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
+  m_vertex_buffer_data.clear();
+  m_color_buffer_data.clear();
 
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
+  // Bottom
+  add_quad(
+    { right, 0.0f, front },
+    { left , 0.0f, front },
+    { left , 0.0f, back  },
+    { right, 0.0f, back  },
+    color
+  );
+  
+  // Left side
+  add_quad(
+    { left, 0.0f  , front },
+    { left, height, front },
+    { left, height, back  },
+    { left, 0.0f  , back  },
+    color * sideMlpy1
+  );
+  
+  // Back
+  add_quad(
+    { left , 0.0f  , back },
+    { left , height, back },
+    { right, height, back },
+    { right, 0.0f  , back },
+    color * sideMlpy2
+  );
 
-    // Side
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
-    { red * sideMlpy1, green * sideMlpy1, blue * sideMlpy1 },
+  // Front
+  add_quad(
+    { right, height, front },
+    { left , height, front },
+    { left , 0.0f  , front },
+    { right, 0.0f  , front },
+    color * sideMlpy3
+  );
 
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
-    { red * sideMlpy2, green * sideMlpy2, blue * sideMlpy2 },
+  // Right side
+  add_quad(
+    { right, height, back  },
+    { right, height, front },
+    { right, 0.0f  , front },
+    { right, 0.0f  , back  },
+    color * sideMlpy4
+  );
 
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-    { red * sideMlpy3, green * sideMlpy3, blue * sideMlpy3 },
-
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-    { red * sideMlpy4, green * sideMlpy4, blue * sideMlpy4 },
-
-    // Top
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-    { red, green, blue },
-  };
+  // Top
+  add_quad(
+    { left , height, back  },
+    { left , height, front },
+    { right, height, front },
+    { right, height, back  },
+    color
+  );
 
 #ifdef HAS_GL
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
@@ -416,24 +369,28 @@ void CVisualizationSpectrum::draw_bar(GLfloat x_offset, GLfloat z_offset, GLfloa
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[1]);
   glBufferData(GL_ARRAY_BUFFER, m_color_buffer_data.size()*sizeof(glm::vec3), &m_color_buffer_data[0], GL_STATIC_DRAW);
 #endif
-  glDrawArrays(m_mode, 0, m_vertex_buffer_data.size()); /* 12*3 indices starting at 0 -> 12 triangles + 4*3 to have on lines show correct */
+  glDrawArrays(m_mode, 0, m_vertex_buffer_data.size());
 }
 
 void CVisualizationSpectrum::draw_bars(void)
 {
   int x, y;
-  GLfloat x_offset, z_offset, r_base, b_base;
+  GLfloat x_mid, z_mid, red, green, blue;
 
   for(y = 0; y < NUM_BANDS; y++)
   {
-    z_offset = -1.6 + ((15 - y) * 0.2);
+    z_mid = 3.0f * ( 0.5f - y / (NUM_BANDS - 1.0f) );
 
-    b_base = y * (1.0 / 15);
-    r_base = 1.0 - b_base;
+    blue = y / (NUM_BANDS - 1.0f);
 
     for(x = 0; x < NUM_BANDS; x++)
     {
-      x_offset = -1.6 + ((float)x * 0.2);
+      x_mid = 3.0f * ( -0.5f + x / (NUM_BANDS - 1.0f) );
+      
+      green = x / (NUM_BANDS - 1.0f);
+
+      red = (1.0f - blue) * (1.0f - green);
+
       if (m_hSpeed > 0.0f && std::fabs (m_cHeights[y][x] - m_heights[y][x]) > m_hSpeed)
       {
         if (m_cHeights[y][x] < m_heights[y][x])
@@ -446,7 +403,7 @@ void CVisualizationSpectrum::draw_bars(void)
         m_cHeights[y][x] = m_heights[y][x];
       }
       
-      draw_bar(x_offset, z_offset, m_cHeights[y][x], r_base - (float(x) * (r_base / 15.0)), (float)x * (1.0 / 15), b_base);
+      draw_bar(x_mid, z_mid, m_cHeights[y][x], red, green, blue);
     }
   }
 }
