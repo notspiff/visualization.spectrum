@@ -51,6 +51,7 @@ public:
   bool Start(int channels, int samplesPerSec, int bitsPerSample, std::string songName) override;
   void Stop() override;
   void Render() override;
+  void GetInfo (bool &wantsFreq, int &syncDelay) override;
   void AudioData(const float* audioData, int audioDataLength, float* freqData, int freqDataLength) override;
   ADDON_STATUS SetSetting(const std::string& settingName, const kodi::CSettingValue& settingValue) override;
 
@@ -106,7 +107,7 @@ CVisualizationSpectrum::CVisualizationSpectrum()
     m_z_speed(0.0f),
     m_hSpeed(0.05f)
 {
-  m_scale = 1.0 / log(256.0);
+  m_scale = 1.0f;
 
   SetBarHeightSetting(kodi::GetSettingInt("bar_height"));
   SetSpeedSetting(kodi::GetSettingInt("speed"));
@@ -422,40 +423,64 @@ void CVisualizationSpectrum::add_bars(void)
   }
 }
 
+void CVisualizationSpectrum::GetInfo (bool &wantsFreq, int &syncDelay)
+{
+  wantsFreq = true;      // enable FFT data aka FreqData for AudioData
+  syncDelay = 0;
+}
+
 void CVisualizationSpectrum::AudioData(const float* pAudioData, int iAudioDataLength, float *pFreqData, int iFreqDataLength)
 {
-  int i,c;
-  int y=0;
-  GLfloat val;
+  int i, x, y;
 
-  int xscale[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 54, 74, 101, 137, 187, 255};
+  GLfloat h;
+  GLfloat pow;
 
-  for(y = NUM_BANDS - 1; y > 0; y--)
+  /* Scale like human hearing loudness recognition to get
+   * similar heights for all frequencies with natural sound input.
+   * In other words: Scale relative to a pink-noise-spectrum aka 1/f-noise.
+   * Or simply: Measure power per octave.
+   * Note: Because of joined stereo, we only get 128 frequencies.
+   */
+
+   // ** TODO ** Don't expect iFreqDataLength == 256
+                 
+  int     xscale[NUM_BANDS + 1] = {    0,    2,    4,    6,    8,   10,   12,   16,
+                                      22,   28,   34,   44,   56,   70,   90,  180,  256 }; // pFreqData[i] - joined stereo!
+  GLfloat hscale[NUM_BANDS    ] = { 1.0f, 1.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,
+                                    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f, 2.0f       }; // bands per octave
+
+  for(x = 0; x < NUM_BANDS; x++)
   {
-    for(i = 0; i < NUM_BANDS; i++)
+    /* Shift backwards by one row */
+    for(y = NUM_BANDS - 1; y > 0; y--)
     {
-      m_heights[y][i] = m_heights[y - 1][i];
+      m_heights[y][x] = m_heights[y - 1][x];
     }
-  }
+    
+    /* Add up the resulting output power factor avarage over time for the sine waves sum of each band
+     * In other words: Calculate the square of the root mean square (RMS) value
+     * avg( (sin(f1)*a + sin(f2)*b + sin(f3)*c + ... )^2 ) = 0.5 * ( a^2 + b^2 + c^2 + ... )
+     *  where
+     *   a,b,c,... are the amplitudes aka FreqData magnitudes,
+     *   0.5 is the avg of arbitrary sin(f[i])*sin(f[i]) and
+     *   0.0 is the avg of arbitrary sin(f[i])*sin(f[j]) nullifying a*b and friends
+     */
+    pow = 0.0f;
+    // Just add up joined stereo channels (factor 2 just gives us 3 dB more)
+    for(i = xscale[x]; i < xscale[x + 1] && i < iFreqDataLength; i++)
+    {
+      pow += pFreqData[i] * pFreqData[i];
+    }
+    pow *= 0.5f;
+    pow *= hscale[x]; // multiply with bands per octave to finally get the power per octave factor
 
-  for(i = 0; i < NUM_BANDS; i++)
-  {
-    for(c = xscale[i], y = 0; c < xscale[i + 1]; c++)
-    {
-      if (c<iAudioDataLength)
-      {
-        if((int)(pAudioData[c] * (INT16_MAX)) > y)
-          y = (int)(pAudioData[c] * (INT16_MAX));
-      }
-      else
-        continue;
-    }
-    y >>= 7;
-    if(y > 0)
-      val = (logf(y) * m_scale);
-    else
-      val = 0;
-    m_heights[0][i] = val;
+    h = pow > 0.0f ? 10 * log10f(pow) / 96.0f + 1.0f : 0.0f; // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
+
+    if (h < 0.0f)     // cut-off (bottom of bar)
+      h = 0.0f;
+
+    m_heights[0][x] = h * m_scale;
   }
 }
 
@@ -464,24 +489,24 @@ void CVisualizationSpectrum::SetBarHeightSetting(int settingValue)
   switch (settingValue)
   {
   case 1://standard
-    m_scale = 1.f / log(256.f);
+    m_scale = 1.0f;
     break;
 
   case 2://big
-    m_scale = 2.f / log(256.f);
+    m_scale = 2.0f;
     break;
 
   case 3://real big
-    m_scale = 3.f / log(256.f);
+    m_scale = 3.0f;
     break;
 
   case 4://unused
-    m_scale = 0.33f / log(256.f);
+    m_scale = 0.33f;
     break;
 
   case 0://small
   default:
-    m_scale = 0.5f / log(256.f);
+    m_scale = 0.5f;
     break;
   }
 }
