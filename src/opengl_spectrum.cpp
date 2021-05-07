@@ -232,6 +232,10 @@ void CVisualizationSpectrum::Render()
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LESS);
 
+  glEnable(GL_CULL_FACE);
+  glCullFace(GL_BACK);
+  glFrontFace(GL_CCW);
+
   // Clear the screen
   glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -255,6 +259,8 @@ void CVisualizationSpectrum::Render()
 
   glDisableVertexAttribArray(m_hPos);
   glDisableVertexAttribArray(m_hCol);
+
+  glDisable(GL_CULL_FACE);
 
   glDisable(GL_DEPTH_TEST);
 #ifdef HAS_GL
@@ -318,6 +324,13 @@ void CVisualizationSpectrum::add_bar(GLfloat x_mid, GLfloat z_mid, GLfloat heigh
     sideMlpy1 = sideMlpy2 = sideMlpy3 = sideMlpy4 = 1.0f;
   }
 
+  /* notes:
+   * 
+   * Vertices must be in counter-clock-wise order for face-culling.
+   * For lines-mode, only 1st <-> 2nd and 1st <-> last vertex are used.
+   * Therefore the 1st vertices are choosen so that all 12 edges are drawn.
+   */
+  
   // Bottom
   add_quad(
     { right, 0.0f, front },
