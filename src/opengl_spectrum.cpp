@@ -62,8 +62,8 @@ private:
   void SetSpeedSetting(int settingValue);
   void SetModeSetting(int settingValue);
 
-  GLfloat m_heights[16][16];
-  GLfloat m_cHeights[16][16];
+  GLfloat m_heights[NUM_BANDS][NUM_BANDS];
+  GLfloat m_cHeights[NUM_BANDS][NUM_BANDS];
   GLfloat m_scale;
   GLenum m_mode;
   float m_y_angle, m_y_speed, m_y_fixedAngle;
@@ -132,9 +132,9 @@ bool CVisualizationSpectrum::Start(int channels, int samplesPerSec, int bitsPerS
 
   int x, y;
 
-  for(x = 0; x < 16; x++)
+  for(x = 0; x < NUM_BANDS; x++)
   {
-    for(y = 0; y < 16; y++)
+    for(y = 0; y < NUM_BANDS; y++)
     {
       m_heights[y][x] = 0.0f;
       m_cHeights[y][x] = 0.0f;
@@ -424,14 +424,14 @@ void CVisualizationSpectrum::draw_bars(void)
   int x, y;
   GLfloat x_offset, z_offset, r_base, b_base;
 
-  for(y = 0; y < 16; y++)
+  for(y = 0; y < NUM_BANDS; y++)
   {
     z_offset = -1.6 + ((15 - y) * 0.2);
 
     b_base = y * (1.0 / 15);
     r_base = 1.0 - b_base;
 
-    for(x = 0; x < 16; x++)
+    for(x = 0; x < NUM_BANDS; x++)
     {
       x_offset = -1.6 + ((float)x * 0.2);
       if (::fabs(m_cHeights[y][x]-m_heights[y][x])>m_hSpeed)
@@ -454,9 +454,9 @@ void CVisualizationSpectrum::AudioData(const float* pAudioData, int iAudioDataLe
 
   int xscale[] = {0, 1, 2, 3, 5, 7, 10, 14, 20, 28, 40, 54, 74, 101, 137, 187, 255};
 
-  for(y = 15; y > 0; y--)
+  for(y = NUM_BANDS - 1; y > 0; y--)
   {
-    for(i = 0; i < 16; i++)
+    for(i = 0; i < NUM_BANDS; i++)
     {
       m_heights[y][i] = m_heights[y - 1][i];
     }
