@@ -73,8 +73,8 @@ private:
 
   void add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color);
   
-  void draw_bar(GLfloat x_offset, GLfloat z_offset, GLfloat height, GLfloat red, GLfloat green, GLfloat blue);
-  void draw_bars(void);
+  void add_bar(GLfloat x_offset, GLfloat z_offset, GLfloat height, GLfloat red, GLfloat green, GLfloat blue);
+  void add_bars(void);
 
   // Shader related data
   glm::mat4 m_projMat;
@@ -113,8 +113,8 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   SetModeSetting(kodi::GetSettingInt("mode"));
   m_y_fixedAngle = kodi::GetSettingInt("rotation_angle");
 
-  m_vertex_buffer_data.resize(36);
-  m_color_buffer_data.resize(36);
+  m_vertex_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
+  m_color_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
 }
 
 bool CVisualizationSpectrum::Start(int channels, int samplesPerSec, int bitsPerSample, std::string songName)
@@ -183,6 +183,30 @@ void CVisualizationSpectrum::Render()
   if (!m_startOK)
     return;
 
+  m_vertex_buffer_data.clear();
+  m_color_buffer_data.clear();
+
+  add_bars();
+
+  m_x_angle += m_x_speed;
+  if(m_x_angle >= 360.0f)
+    m_x_angle -= 360.0f;
+
+  if (m_y_fixedAngle < 0.0f)
+  {
+    m_y_angle += m_y_speed;
+    if(m_y_angle >= 360.0f)
+      m_y_angle -= 360.0f;
+  }
+  else
+  {
+    m_y_angle = m_y_fixedAngle;
+  }
+
+  m_z_angle += m_z_speed;
+  if(m_z_angle >= 360.0f)
+    m_z_angle -= 360.0f;
+
 #ifdef HAS_GL
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
   glVertexAttribPointer(m_hPos, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*3, nullptr);
@@ -211,33 +235,21 @@ void CVisualizationSpectrum::Render()
   // Clear the screen
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  m_x_angle += m_x_speed;
-  if(m_x_angle >= 360.0f)
-    m_x_angle -= 360.0f;
-
-  if (m_y_fixedAngle < 0.0f)
-  {
-    m_y_angle += m_y_speed;
-    if(m_y_angle >= 360.0f)
-      m_y_angle -= 360.0f;
-  }
-  else
-  {
-    m_y_angle = m_y_fixedAngle;
-  }
-
-  m_z_angle += m_z_speed;
-  if(m_z_angle >= 360.0f)
-    m_z_angle -= 360.0f;
-
   m_modelMat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -5.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_x_angle), glm::vec3(1.0f, 0.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_y_angle), glm::vec3(0.0f, 1.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_z_angle), glm::vec3(0.0f, 0.0f, 1.0f));
 
+#ifdef HAS_GL
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
+  glBufferData(GL_ARRAY_BUFFER, m_vertex_buffer_data.size()*sizeof(glm::vec3), &m_vertex_buffer_data[0], GL_STATIC_DRAW);
+  glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[1]);
+  glBufferData(GL_ARRAY_BUFFER, m_color_buffer_data.size()*sizeof(glm::vec3), &m_color_buffer_data[0], GL_STATIC_DRAW);
+#endif
+
   EnableShader();
 
-  draw_bars();
+  glDrawArrays(m_mode, 0, m_vertex_buffer_data.size());
 
   DisableShader();
 
@@ -281,7 +293,7 @@ void CVisualizationSpectrum::add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm
     m_color_buffer_data.push_back(color);
 }
 
-void CVisualizationSpectrum::draw_bar(GLfloat x_mid, GLfloat z_mid, GLfloat height, GLfloat red, GLfloat green, GLfloat blue )
+void CVisualizationSpectrum::add_bar(GLfloat x_mid, GLfloat z_mid, GLfloat height, GLfloat red, GLfloat green, GLfloat blue )
 {
   GLfloat width = 0.1f;
 
@@ -305,9 +317,6 @@ void CVisualizationSpectrum::draw_bar(GLfloat x_mid, GLfloat z_mid, GLfloat heig
   {
     sideMlpy1 = sideMlpy2 = sideMlpy3 = sideMlpy4 = 1.0f;
   }
-
-  m_vertex_buffer_data.clear();
-  m_color_buffer_data.clear();
 
   // Bottom
   add_quad(
@@ -362,17 +371,9 @@ void CVisualizationSpectrum::draw_bar(GLfloat x_mid, GLfloat z_mid, GLfloat heig
     { right, height, back  },
     color
   );
-
-#ifdef HAS_GL
-  glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
-  glBufferData(GL_ARRAY_BUFFER, m_vertex_buffer_data.size()*sizeof(glm::vec3), &m_vertex_buffer_data[0], GL_STATIC_DRAW);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[1]);
-  glBufferData(GL_ARRAY_BUFFER, m_color_buffer_data.size()*sizeof(glm::vec3), &m_color_buffer_data[0], GL_STATIC_DRAW);
-#endif
-  glDrawArrays(m_mode, 0, m_vertex_buffer_data.size());
 }
 
-void CVisualizationSpectrum::draw_bars(void)
+void CVisualizationSpectrum::add_bars(void)
 {
   int x, y;
   GLfloat x_mid, z_mid, red, green, blue;
@@ -403,7 +404,7 @@ void CVisualizationSpectrum::draw_bars(void)
         m_cHeights[y][x] = m_heights[y][x];
       }
       
-      draw_bar(x_mid, z_mid, m_cHeights[y][x], red, green, blue);
+      add_bar(x_mid, z_mid, m_cHeights[y][x], red, green, blue);
     }
   }
 }
