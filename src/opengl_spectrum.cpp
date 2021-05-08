@@ -63,6 +63,17 @@ private:
   void SetSpeedSetting(int settingValue);
   void SetModeSetting(int settingValue);
 
+  /* Scale like human hearing loudness recognition to get
+   * similar heights for all frequencies with natural sound input.
+   * In other words: Scale relative to a pink-noise-spectrum aka 1/f-noise.
+   * Or simply: Measure power per octave.
+   * Note: Because of joined stereo, we only get 128 frequencies.
+   */
+
+  // pFreqData[i] - joined stereo!                                Don't expect iFreqDataLength == 256 <- ** TODO **
+  // near 1/3 octaves per bar where possible (bar# 4 to 15)
+  int     m_xscale[NUM_BANDS + 1] = { 0, 2, 4, 6, 8, 10, 12, 16, 22, 28, 34, 44, 56, 70, 90, 114, 256 }; 
+  GLfloat m_hscale[NUM_BANDS];
   GLfloat m_heights[NUM_BANDS][NUM_BANDS];
   GLfloat m_cHeights[NUM_BANDS][NUM_BANDS];
   GLfloat m_scale;
@@ -108,6 +119,16 @@ CVisualizationSpectrum::CVisualizationSpectrum()
     m_hSpeed(0.05f)
 {
   m_scale = 1.0f;
+
+  GLfloat f_lo, f_hi;
+  
+  for(int x = 0; x < NUM_BANDS; x++)
+  {
+    f_lo = m_xscale[x    ] / 2 + 1 - 0.5f;
+    f_hi = m_xscale[x + 1] / 2 + 1 - 0.5f;
+    
+    m_hscale[x] = logf(2.0f) / logf(f_hi / f_lo); // bands per octave
+  }
 
   SetBarHeightSetting(kodi::GetSettingInt("bar_height"));
   SetSpeedSetting(kodi::GetSettingInt("speed"));
@@ -435,21 +456,7 @@ void CVisualizationSpectrum::AudioData(const float* pAudioData, int iAudioDataLe
 
   GLfloat h;
   GLfloat pow;
-
-  /* Scale like human hearing loudness recognition to get
-   * similar heights for all frequencies with natural sound input.
-   * In other words: Scale relative to a pink-noise-spectrum aka 1/f-noise.
-   * Or simply: Measure power per octave.
-   * Note: Because of joined stereo, we only get 128 frequencies.
-   */
-
-   // ** TODO ** Don't expect iFreqDataLength == 256
-                 
-  int     xscale[NUM_BANDS + 1] = {    0,    2,    4,    6,    8,   10,   12,   16,
-                                      22,   28,   34,   44,   56,   70,   90,  180,  256 }; // pFreqData[i] - joined stereo!
-  GLfloat hscale[NUM_BANDS    ] = { 1.0f, 1.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f,
-                                    3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 1.0f, 2.0f       }; // bands per octave
-
+  
   for(x = 0; x < NUM_BANDS; x++)
   {
     /* Shift backwards by one row */
@@ -468,12 +475,12 @@ void CVisualizationSpectrum::AudioData(const float* pAudioData, int iAudioDataLe
      */
     pow = 0.0f;
     // Just add up joined stereo channels (factor 2 just gives us 3 dB more)
-    for(i = xscale[x]; i < xscale[x + 1] && i < iFreqDataLength; i++)
+    for(i = m_xscale[x]; i < m_xscale[x + 1] && i < iFreqDataLength; i++)
     {
       pow += pFreqData[i] * pFreqData[i];
     }
     pow *= 0.5f;
-    pow *= hscale[x]; // multiply with bands per octave to finally get the power per octave factor
+    pow *= m_hscale[x]; // multiply with bands per octave to finally get the power per octave factor
 
     h = pow > 0.0f ? 10 * log10f(pow) / 96.0f + 1.0f : 0.0f; // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
 
