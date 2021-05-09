@@ -48,12 +48,19 @@ public:
   CVisualizationSpectrum();
   ~CVisualizationSpectrum() override = default;
 
-  bool Start(int channels, int samplesPerSec, int bitsPerSample, std::string songName) override;
+  bool Start(int channels,
+             int samplesPerSec,
+             int bitsPerSample,
+             std::string songName) override;
   void Stop() override;
   void Render() override;
   void GetInfo (bool &wantsFreq, int &syncDelay) override;
-  void AudioData(const float* audioData, int audioDataLength, float* freqData, int freqDataLength) override;
-  ADDON_STATUS SetSetting(const std::string& settingName, const kodi::CSettingValue& settingValue) override;
+  void AudioData(const float* audioData,
+                 int audioDataLength,
+                 float* freqData,
+                 int freqDataLength) override;
+  ADDON_STATUS SetSetting(const std::string& settingName,
+                          const kodi::CSettingValue& settingValue) override;
 
   void OnCompiledAndLinked() override;
   bool OnEnabled() override;
@@ -63,30 +70,39 @@ private:
   void SetSpeedSetting(int settingValue);
   void SetModeSetting(int settingValue);
 
-  /* Scale like human hearing loudness recognition to get
-   * similar heights for all frequencies with natural sound input.
-   * In other words: Scale relative to a pink-noise-spectrum aka 1/f-noise.
-   * Or simply: Measure power per octave.
-   * Note: Because of joined stereo, we only get 128 frequencies.
-   */
+  // Scale like human hearing loudness recognition to get
+  // similar heights for all frequencies with natural sound input.
+  // In other words: Scale relative to a pink-noise-spectrum aka 1/f-noise.
+  // Or simply: Measure power per octave.
+  // Note: Because of joined stereo, we only get 128 frequencies.
 
-  // pFreqData[i] - joined stereo!                                Don't expect iFreqDataLength == 256 <- ** TODO **
-  // near 1/3 octaves per bar where possible (bar# 4 to 15)
-  int     m_xscale[NUM_BANDS + 1] = { 0, 2, 4, 6, 8, 10, 12, 16, 22, 28, 34, 44, 56, 70, 90, 114, 256 }; 
+  // pFreqData[i] - joined stereo!
+  // Near 1/3 octaves per bar where possible (bar# 4 to 15)
+  // ** TODO ** Don't expect iFreqDataLength == 256
+  int m_xscale[NUM_BANDS + 1] = {0, 2, 4, 6, 8, 10, 12, 16, 22, 28, 34, 44, 56, 70, 90, 114, 256}; 
   GLfloat m_hscale[NUM_BANDS];
   GLfloat m_heights[NUM_BANDS][NUM_BANDS];
   GLfloat m_cHeights[NUM_BANDS][NUM_BANDS];
   GLfloat m_scale;
   GLenum m_mode;
-  float m_y_angle, m_y_speed, m_y_fixedAngle;
-  float m_x_angle, m_x_speed;
-  float m_z_angle, m_z_speed;
+  float m_x_angle;
+  float m_y_angle;
+  float m_z_angle;
+  float m_x_speed;
+  float m_y_speed;
+  float m_z_speed;
+  float m_y_fixedAngle;
+
   float m_hSpeed;
 
   void add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color);
-  
-  void add_bar(GLfloat x_offset, GLfloat z_offset, GLfloat height, GLfloat red, GLfloat green, GLfloat blue);
-  void add_bars(void);
+  void add_bar(GLfloat x_mid,
+               GLfloat z_mid,
+               GLfloat height,
+               GLfloat red,
+               GLfloat green,
+               GLfloat blue);
+  void add_bars();
 
   // Shader related data
   glm::mat4 m_projMat;
@@ -110,24 +126,25 @@ private:
 
 CVisualizationSpectrum::CVisualizationSpectrum()
   : m_mode(GL_TRIANGLES),
-    m_y_angle(45.0f),
-    m_y_speed(0.5f),
     m_x_angle(20.0f),
-    m_x_speed(0.0f),
+    m_y_angle(45.0f),
     m_z_angle(0.0f),
+    m_x_speed(0.0f),
+    m_y_speed(0.5f),
     m_z_speed(0.0f),
     m_hSpeed(0.05f)
 {
   m_scale = 1.0f;
 
-  GLfloat f_lo, f_hi;
+  GLfloat freq_lo;
+  GLfloat freq_hi;
   
-  for(int x = 0; x < NUM_BANDS; x++)
+  for (int x = 0; x < NUM_BANDS; x++)
   {
-    f_lo = m_xscale[x    ] / 2 + 1 - 0.5f;
-    f_hi = m_xscale[x + 1] / 2 + 1 - 0.5f;
+    freq_lo = m_xscale[x] / 2 + 1 - 0.5f;
+    freq_hi = m_xscale[x + 1] / 2 + 1 - 0.5f;
     
-    m_hscale[x] = logf(2.0f) / logf(f_hi / f_lo); // bands per octave
+    m_hscale[x] = 1 / log2f(freq_hi / freq_lo); // bands per octave
   }
 
   SetBarHeightSetting(kodi::GetSettingInt("bar_height"));
@@ -139,7 +156,10 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   m_color_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
 }
 
-bool CVisualizationSpectrum::Start(int channels, int samplesPerSec, int bitsPerSample, std::string songName)
+bool CVisualizationSpectrum::Start(int channels,
+                                   int samplesPerSec,
+                                   int bitsPerSample,
+                                   std::string songName)
 {
   (void)channels;
   (void)samplesPerSec;
@@ -154,11 +174,9 @@ bool CVisualizationSpectrum::Start(int channels, int samplesPerSec, int bitsPerS
     return false;
   }
 
-  int x, y;
-
-  for(x = 0; x < NUM_BANDS; x++)
+  for (int x = 0; x < NUM_BANDS; x++)
   {
-    for(y = 0; y < NUM_BANDS; y++)
+    for (int y = 0; y < NUM_BANDS; y++)
     {
       m_heights[y][x] = 0.0f;
       m_cHeights[y][x] = 0.0f;
@@ -211,34 +229,32 @@ void CVisualizationSpectrum::Render()
   add_bars();
 
   m_x_angle += m_x_speed;
-  if(m_x_angle >= 360.0f)
+  if (m_x_angle >= 360.0f)
     m_x_angle -= 360.0f;
 
   if (m_y_fixedAngle < 0.0f)
   {
     m_y_angle += m_y_speed;
-    if(m_y_angle >= 360.0f)
+    if (m_y_angle >= 360.0f)
       m_y_angle -= 360.0f;
   }
   else
-  {
     m_y_angle = m_y_fixedAngle;
-  }
 
   m_z_angle += m_z_speed;
-  if(m_z_angle >= 360.0f)
+  if (m_z_angle >= 360.0f)
     m_z_angle -= 360.0f;
 
 #ifdef HAS_GL
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
-  glVertexAttribPointer(m_hPos, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*3, nullptr);
+  glVertexAttribPointer(m_hPos, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 3, nullptr);
   glEnableVertexAttribArray(m_hPos);
 
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[1]);
-  glVertexAttribPointer(m_hCol, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*3, nullptr);
+  glVertexAttribPointer(m_hCol, 3, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 3, nullptr);
   glEnableVertexAttribArray(m_hCol);
 #else
-  // 1rst attribute buffer : vertices
+  // 1st attribute buffer : vertices
   glEnableVertexAttribArray(m_hPos);
   glVertexAttribPointer(m_hPos, 3, GL_FLOAT, GL_FALSE, 0, &m_vertex_buffer_data[0]);
 
@@ -268,9 +284,15 @@ void CVisualizationSpectrum::Render()
 
 #ifdef HAS_GL
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
-  glBufferData(GL_ARRAY_BUFFER, m_vertex_buffer_data.size()*sizeof(glm::vec3), &m_vertex_buffer_data[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               m_vertex_buffer_data.size() * sizeof(glm::vec3),
+               &m_vertex_buffer_data[0],
+               GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[1]);
-  glBufferData(GL_ARRAY_BUFFER, m_color_buffer_data.size()*sizeof(glm::vec3), &m_color_buffer_data[0], GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER,
+               m_color_buffer_data.size() * sizeof(glm::vec3),
+               &m_color_buffer_data[0],
+               GL_STATIC_DRAW);
 #endif
 
   EnableShader();
@@ -311,29 +333,50 @@ bool CVisualizationSpectrum::OnEnabled()
   return true;
 }
 
-void CVisualizationSpectrum::add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color)
+void CVisualizationSpectrum::add_quad(glm::vec3 a,
+                                      glm::vec3 b,
+                                      glm::vec3 c,
+                                      glm::vec3 d,
+                                      glm::vec3 color)
 {
-  m_vertex_buffer_data.push_back(a); m_vertex_buffer_data.push_back(b); // line-mode: 1st line
-  m_vertex_buffer_data.push_back(c); m_vertex_buffer_data.push_back(c);
-  m_vertex_buffer_data.push_back(d); m_vertex_buffer_data.push_back(a); // line-mode: 2nd line
+  m_vertex_buffer_data.push_back(a); // line-mode: 1st line
+  m_vertex_buffer_data.push_back(b); //
+  m_vertex_buffer_data.push_back(c);
+  m_vertex_buffer_data.push_back(c);
+  m_vertex_buffer_data.push_back(d); // line-mode: 2nd line
+  m_vertex_buffer_data.push_back(a); //
   
   for (int i=0; i < 6; i++)
+  {
     m_color_buffer_data.push_back(color);
+  }
 }
 
-void CVisualizationSpectrum::add_bar(GLfloat x_mid, GLfloat z_mid, GLfloat height, GLfloat red, GLfloat green, GLfloat blue )
+void CVisualizationSpectrum::add_bar(GLfloat x_mid,
+                                     GLfloat z_mid,
+                                     GLfloat height,
+                                     GLfloat red,
+                                     GLfloat green,
+                                     GLfloat blue)
 {
   GLfloat width = 0.1f;
 
-  GLfloat left  = x_mid - width / 2.0f;
-  GLfloat right = x_mid + width / 2.0f;
+  GLfloat lft = x_mid - width / 2.0f;
+  GLfloat rgt = x_mid + width / 2.0f;
 
-  GLfloat back  = z_mid - width / 2.0f;
-  GLfloat front = z_mid + width / 2.0f;
+  GLfloat bck = z_mid - width / 2.0f;
+  GLfloat fnt = z_mid + width / 2.0f;
 
+  GLfloat top = height;
+  GLfloat btm = 0.0f;
+  
   glm::vec3 color = {red, green, blue};
   
-  GLfloat sideMlpy1, sideMlpy2, sideMlpy3, sideMlpy4;
+  GLfloat sideMlpy1 = 1.0f;
+  GLfloat sideMlpy2 = 1.0f;
+  GLfloat sideMlpy3 = 1.0f;
+  GLfloat sideMlpy4 = 1.0f;
+  
   if (m_mode == GL_TRIANGLES)
   {
     sideMlpy1 = 0.5f;
@@ -341,87 +384,44 @@ void CVisualizationSpectrum::add_bar(GLfloat x_mid, GLfloat z_mid, GLfloat heigh
     sideMlpy3 = 0.75f;
     sideMlpy4 = 0.5f;
   }
-  else
-  {
-    sideMlpy1 = sideMlpy2 = sideMlpy3 = sideMlpy4 = 1.0f;
-  }
 
-  /* notes:
-   * 
-   * Vertices must be in counter-clock-wise order for face-culling.
-   * For lines-mode, only 1st <-> 2nd and 1st <-> last vertex are used.
-   * Therefore the 1st vertices are choosen so that all 12 edges are drawn.
-   */
+  // notes:
+  // Vertices must be in counter-clock-wise order for face-culling.
+  // For lines-mode, only 1st <-> 2nd and 1st <-> last vertex are used.
+  // Therefore the 1st vertices are choosen so that all 12 edges are drawn.
   
   // Bottom
-  add_quad(
-    { right, 0.0f, front },
-    { left , 0.0f, front },
-    { left , 0.0f, back  },
-    { right, 0.0f, back  },
-    color
-  );
-  
+  add_quad({rgt, btm, fnt}, {lft, btm, fnt}, {lft, btm, bck}, {rgt, btm, bck}, color);
   // Left side
-  add_quad(
-    { left, 0.0f  , front },
-    { left, height, front },
-    { left, height, back  },
-    { left, 0.0f  , back  },
-    color * sideMlpy1
-  );
-  
+  add_quad({lft, btm, fnt}, {lft, top, fnt}, {lft, top, bck}, {lft, btm, bck}, color * sideMlpy1);
   // Back
-  add_quad(
-    { left , 0.0f  , back },
-    { left , height, back },
-    { right, height, back },
-    { right, 0.0f  , back },
-    color * sideMlpy2
-  );
-
+  add_quad({lft, btm, bck}, {lft, top, bck}, {rgt, top, bck}, {rgt, btm, bck}, color * sideMlpy2);
   // Front
-  add_quad(
-    { right, height, front },
-    { left , height, front },
-    { left , 0.0f  , front },
-    { right, 0.0f  , front },
-    color * sideMlpy3
-  );
-
+  add_quad({rgt, top, fnt}, {lft, top, fnt}, {lft, btm, fnt}, {rgt, btm, fnt}, color * sideMlpy3);
   // Right side
-  add_quad(
-    { right, height, back  },
-    { right, height, front },
-    { right, 0.0f  , front },
-    { right, 0.0f  , back  },
-    color * sideMlpy4
-  );
-
+  add_quad({rgt, top, bck}, {rgt, top, fnt}, {rgt, btm, fnt}, {rgt, btm, bck}, color * sideMlpy4);
   // Top
-  add_quad(
-    { left , height, back  },
-    { left , height, front },
-    { right, height, front },
-    { right, height, back  },
-    color
-  );
+  add_quad({lft, top, bck}, {lft, top, fnt}, {rgt, top, fnt}, {rgt, top, bck}, color);
 }
 
-void CVisualizationSpectrum::add_bars(void)
+void CVisualizationSpectrum::add_bars()
 {
-  int x, y;
-  GLfloat x_mid, z_mid, red, green, blue;
+  GLfloat x_mid = 0.0f;
+  GLfloat z_mid = 0.0f;
 
-  for(y = 0; y < NUM_BANDS; y++)
+  GLfloat red = 1.0f;
+  GLfloat green = 1.0f;
+  GLfloat blue = 1.0f;
+
+  for (int y = 0; y < NUM_BANDS; y++)
   {
-    z_mid = 3.0f * ( 0.5f - y / (NUM_BANDS - 1.0f) );
+    z_mid = 3.0f * (0.5f - y / (NUM_BANDS - 1.0f));
 
     blue = y / (NUM_BANDS - 1.0f);
 
-    for(x = 0; x < NUM_BANDS; x++)
+    for (int x = 0; x < NUM_BANDS; x++)
     {
-      x_mid = 3.0f * ( -0.5f + x / (NUM_BANDS - 1.0f) );
+      x_mid = 3.0f * (-0.5f + x / (NUM_BANDS - 1.0f));
       
       green = x / (NUM_BANDS - 1.0f);
 
@@ -435,9 +435,7 @@ void CVisualizationSpectrum::add_bars(void)
           m_cHeights[y][x] -= m_hSpeed;
       }
       else
-      {
         m_cHeights[y][x] = m_heights[y][x];
-      }
       
       add_bar(x_mid, z_mid, m_cHeights[y][x], red, green, blue);
     }
@@ -450,41 +448,42 @@ void CVisualizationSpectrum::GetInfo (bool &wantsFreq, int &syncDelay)
   syncDelay = 0;
 }
 
-void CVisualizationSpectrum::AudioData(const float* pAudioData, int iAudioDataLength, float *pFreqData, int iFreqDataLength)
+void CVisualizationSpectrum::AudioData(const float* pAudioData,
+                                       int iAudioDataLength,
+                                       float *pFreqData,
+                                       int iFreqDataLength)
 {
-  int i, x, y;
+  GLfloat h = 0.0;
+  GLfloat pow = 0.0;
 
-  GLfloat h;
-  GLfloat pow;
-  
-  for(x = 0; x < NUM_BANDS; x++)
+  for (int x = 0; x < NUM_BANDS; x++)
   {
-    /* Shift backwards by one row */
-    for(y = NUM_BANDS - 1; y > 0; y--)
+    // Shift backwards by one row
+    for (int y = NUM_BANDS - 1; y > 0; y--)
     {
       m_heights[y][x] = m_heights[y - 1][x];
     }
-    
-    /* Add up the resulting output power factor avarage over time for the sine waves sum of each band
-     * In other words: Calculate the square of the root mean square (RMS) value
-     * avg( (sin(f1)*a + sin(f2)*b + sin(f3)*c + ... )^2 ) = 0.5 * ( a^2 + b^2 + c^2 + ... )
-     *  where
-     *   a,b,c,... are the amplitudes aka FreqData magnitudes,
-     *   0.5 is the avg of arbitrary sin(f[i])*sin(f[i]) and
-     *   0.0 is the avg of arbitrary sin(f[i])*sin(f[j]) nullifying a*b and friends
-     */
-    pow = 0.0f;
+
+    // Add up the resulting output power factor avarage over time for the sine waves sum of band
+    // In other words: Calculate the square of the root mean square (RMS) value
+    // avg( (sin(f1)*a + sin(f2)*b + sin(f3)*c + ... )^2 ) = 0.5 * ( a^2 + b^2 + c^2 + ... )
+    //  where
+    //   a,b,c,... are the amplitudes aka FreqData magnitudes,
+    //   0.5 is the avg of arbitrary sin(f[i])*sin(f[i]) and
+    //   0.0 is the avg of arbitrary sin(f[i])*sin(f[j]) nullifying a*b and friends
     // Just add up joined stereo channels (factor 2 just gives us 3 dB more)
-    for(i = m_xscale[x]; i < m_xscale[x + 1] && i < iFreqDataLength; i++)
+    pow = 0.0f;
+    for (int i = m_xscale[x]; i < m_xscale[x + 1] && i < iFreqDataLength; i++)
     {
       pow += pFreqData[i] * pFreqData[i];
     }
     pow *= 0.5f;
     pow *= m_hscale[x]; // multiply with bands per octave to finally get the power per octave factor
 
-    h = pow > 0.0f ? 10 * log10f(pow) / 96.0f + 1.0f : 0.0f; // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
+    // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
+    h = pow > 0.0f ? 10 * log10f(pow) / 96.0f + 1.0f : 0.0f;
 
-    if (h < 0.0f)     // cut-off (bottom of bar)
+    if (h < 0.0f) // cut-off (bottom of bar)
       h = 0.0f;
 
     m_heights[0][x] = h * m_scale;
@@ -495,26 +494,29 @@ void CVisualizationSpectrum::SetBarHeightSetting(int settingValue)
 {
   switch (settingValue)
   {
-  case 1://standard
-    m_scale = 1.0f;
-    break;
-
-  case 2://big
-    m_scale = 2.0f;
-    break;
-
-  case 3://real big
-    m_scale = 3.0f;
-    break;
-
-  case 4://unused
-    m_scale = 0.33f;
-    break;
-
-  case 0://small
-  default:
-    m_scale = 0.5f;
-    break;
+    case 1: // standard
+    {
+      m_scale = 1.0f;
+      break;
+    }
+    case 2: // big
+    {
+      m_scale = 2.0f;
+      break;
+    }
+    case 3: // real big
+    {
+      m_scale = 3.0f;
+      break;
+    }
+    case 4: // unused
+    {
+      m_scale = 0.33f;
+      break;
+    }
+    case 0: // small
+    default:
+      m_scale = 0.5f;
   }
 }
 
@@ -522,26 +524,29 @@ void CVisualizationSpectrum::SetSpeedSetting(int settingValue)
 {
   switch (settingValue)
   {
-  case 1:
-    m_hSpeed = 0.025f;
-    break;
-
-  case 2:
-    m_hSpeed = 0.05f;
-    break;
-
-  case 3:
-    m_hSpeed = 0.1f;
-    break;
-
-  case 4:
-    m_hSpeed = 0.0f; // disable - no delay
-    break;
-
-  case 0:
-  default:
-    m_hSpeed = 0.0125f;
-    break;
+    case 1:
+    {
+      m_hSpeed = 0.025f;
+      break;
+    }
+    case 2:
+    {
+      m_hSpeed = 0.05f;
+      break;
+    }
+    case 3:
+    {
+      m_hSpeed = 0.1f;
+      break;
+    }
+    case 4:
+    {
+      m_hSpeed = 0.0f; // disabled (no delay)
+      break;
+    }
+    case 0:
+    default:
+      m_hSpeed = 0.0125f;
   }
 }
 
@@ -550,20 +555,23 @@ void CVisualizationSpectrum::SetModeSetting(int settingValue)
   switch (settingValue)
   {
     case 1:
+    {
       m_mode = GL_LINES;
       m_pointSize = 0.0f;
       break;
-
+    }
     case 2:
+    {
       m_mode = GL_POINTS;
       m_pointSize = kodi::GetSettingInt("pointsize");
       break;
-
+    }
     case 0:
     default:
+    {
       m_mode = GL_TRIANGLES;
       m_pointSize = 0.0f;
-      break;
+    }
   }
 }
 
@@ -571,7 +579,8 @@ void CVisualizationSpectrum::SetModeSetting(int settingValue)
 // Set a specific Setting value (called from Kodi)
 // !!! Add-on master function !!!
 //-----------------------------------------------------------------------------
-ADDON_STATUS CVisualizationSpectrum::SetSetting(const std::string& settingName, const kodi::CSettingValue& settingValue)
+ADDON_STATUS CVisualizationSpectrum::SetSetting(const std::string& settingName,
+                                                const kodi::CSettingValue& settingValue)
 {
   if (settingName.empty() || settingValue.empty())
     return ADDON_STATUS_UNKNOWN;
