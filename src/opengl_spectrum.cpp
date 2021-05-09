@@ -136,15 +136,16 @@ CVisualizationSpectrum::CVisualizationSpectrum()
 {
   m_scale = 1.0f;
 
-  GLfloat freq_lo;
-  GLfloat freq_hi;
+  int freq_lo = 1;
+  int freq_hi = 1;
   
   for (int x = 0; x < NUM_BANDS; x++)
   {
-    freq_lo = m_xscale[x] / 2 + 1 - 0.5f;
-    freq_hi = m_xscale[x + 1] / 2 + 1 - 0.5f;
+    // Divide by 2 and discard reminder because of joined stereo
+    freq_lo = m_xscale[x] / 2 + 1; // pFreqData[0] frequency is 1 (no DC values)
+    freq_hi = m_xscale[x + 1] / 2; // next band start frequency - 1
     
-    m_hscale[x] = 1 / log2f(freq_hi / freq_lo); // bands per octave
+    m_hscale[x] = 1.0f / log2f((freq_hi + 0.5f) / (freq_lo - 0.5f)); // bands per octave
   }
 
   SetBarHeightSetting(kodi::GetSettingInt("bar_height"));
@@ -481,7 +482,7 @@ void CVisualizationSpectrum::AudioData(const float* pAudioData,
     pow *= m_hscale[x]; // multiply with bands per octave to finally get the power per octave factor
 
     // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
-    h = pow > 0.0f ? 10 * log10f(pow) / 96.0f + 1.0f : 0.0f;
+    h = pow > 0.0f ? 10.0f * log10f(pow) / 96.0f + 1.0f : 0.0f;
 
     if (h < 0.0f) // cut-off (bottom of bar)
       h = 0.0f;
