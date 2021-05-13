@@ -69,6 +69,46 @@
             <formatlabel>30018</formatlabel>
           </control>
         </setting>
+
+        <setting id="rotation_x" type="integer" label="30020">
+          <default>10</default>
+          <constraints>
+            <minimum>0</minimum>
+            <step>5</step>
+            <maximum>90</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30018</formatlabel>
+            <popup>false</popup>
+          </control>
+        </setting>
+
+        <setting id="offset_y" type="integer" label="30021">
+          <default>-25</default>
+          <constraints>
+            <minimum>-150</minimum>
+            <step>5</step>
+            <maximum>100</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30022</formatlabel>
+            <popup>false</popup>
+          </control>
+        </setting>
+
+        <setting id="field_size" type="integer" label="30023">
+          <default>100</default>
+          <constraints>
+            <minimum>50</minimum>
+            <step>5</step>
+            <maximum>150</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30024</formatlabel>
+            <popup>false</popup>
+          </control>
+        </setting>
+
       </group>
     </category>
   </section>

@@ -95,3 +95,23 @@ msgstr "%i°"
 msgctxt "#30019"
 msgid "Turn continuously"
 msgstr "Turn continuously"
+
+msgctxt "#30020"
+msgid "Tilt"
+msgstr "Tilt"
+
+msgctxt "#30021"
+msgid "Base"
+msgstr "Base"
+
+msgctxt "#30022"
+msgid "%+i%%"
+msgstr "%+i%%"
+
+msgctxt "#30023"
+msgid "Field size"
+msgstr "Field size"
+
+msgctxt "#30024"
+msgid "%i%%"
+msgstr "%i%%"

@@ -69,6 +69,8 @@ private:
   void SetBarHeightSetting(int settingValue);
   void SetSpeedSetting(int settingValue);
   void SetModeSetting(int settingValue);
+  void SetBaseSetting(int settingValue);
+  void SetFieldScaleSetting(int settingValue);
 
   // Scale like human hearing loudness recognition to get
   // similar heights for all frequencies with natural sound input.
@@ -84,6 +86,8 @@ private:
   GLfloat m_heights[NUM_BANDS][NUM_BANDS];
   GLfloat m_cHeights[NUM_BANDS][NUM_BANDS];
   GLfloat m_scale;
+  GLfloat m_FieldScale;
+
   GLenum m_mode;
   float m_x_angle;
   float m_y_angle;
@@ -91,9 +95,11 @@ private:
   float m_x_speed;
   float m_y_speed;
   float m_z_speed;
-  float m_y_fixedAngle;
-
   float m_hSpeed;
+
+  float m_x_fixedAngle;
+  float m_y_fixedAngle;
+  float m_y_offset;
 
   void add_quad(glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 color);
   void add_bar(GLfloat x_mid,
@@ -152,6 +158,9 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   SetSpeedSetting(kodi::GetSettingInt("speed"));
   SetModeSetting(kodi::GetSettingInt("mode"));
   m_y_fixedAngle = kodi::GetSettingInt("rotation_angle");
+  m_x_fixedAngle = kodi::GetSettingInt("rotation_x", 10);
+  SetBaseSetting(kodi::GetSettingInt("offset_y", -25));  // replace translate -0.5 * (H=9) / (W=16)
+  SetFieldScaleSetting(kodi::GetSettingInt("field_size", 100));
 
   m_vertex_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
   m_color_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
@@ -231,7 +240,10 @@ void CVisualizationSpectrum::Render()
 
   add_bars();
 
-  m_x_angle = std::fmod(m_x_angle + m_x_speed, 360.0f);
+  if (m_x_fixedAngle < 0.0f)
+    m_x_angle = std::fmod(m_x_angle + m_x_speed, 360.0f);
+  else
+    m_x_angle = m_x_fixedAngle;
 
   if (m_y_fixedAngle < 0.0f)
     m_y_angle = std::fmod(m_y_angle + m_y_speed, 360.0f);
@@ -272,7 +284,7 @@ void CVisualizationSpectrum::Render()
   // Clear the screen
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  m_modelMat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f * Height() / Width(), -5.0f));
+  m_modelMat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -5.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_x_angle), glm::vec3(1.0f, 0.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_y_angle), glm::vec3(0.0f, 1.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_z_angle), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -354,7 +366,7 @@ void CVisualizationSpectrum::add_bar(GLfloat x_mid,
                                      GLfloat green,
                                      GLfloat blue)
 {
-  GLfloat width = 0.1f;
+  GLfloat width = m_FieldScale / (NUM_BANDS - 1.0f) * 0.5f;
 
   GLfloat lft = x_mid - width / 2.0f;
   GLfloat rgt = x_mid + width / 2.0f;
@@ -362,8 +374,8 @@ void CVisualizationSpectrum::add_bar(GLfloat x_mid,
   GLfloat bck = z_mid - width / 2.0f;
   GLfloat fnt = z_mid + width / 2.0f;
 
-  GLfloat top = height;
-  GLfloat btm = 0.0f;
+  GLfloat btm = m_y_offset;
+  GLfloat top = btm + height;
   
   glm::vec3 color = {red, green, blue};
   
@@ -410,13 +422,13 @@ void CVisualizationSpectrum::add_bars()
 
   for (int y = 0; y < NUM_BANDS; y++)
   {
-    z_mid = 3.0f * (0.5f - y / (NUM_BANDS - 1.0f));
+    z_mid = m_FieldScale * (0.5f - y / (NUM_BANDS - 1.0f));
 
     blue = y / (NUM_BANDS - 1.0f);
 
     for (int x = 0; x < NUM_BANDS; x++)
     {
-      x_mid = 3.0f * (-0.5f + x / (NUM_BANDS - 1.0f));
+      x_mid = m_FieldScale * (-0.5f + x / (NUM_BANDS - 1.0f));
       
       green = x / (NUM_BANDS - 1.0f);
 
@@ -571,6 +583,16 @@ void CVisualizationSpectrum::SetModeSetting(int settingValue)
   }
 }
 
+void CVisualizationSpectrum::SetBaseSetting(int settingValue)
+{
+    m_y_offset = settingValue / 100.0f;
+}
+
+void CVisualizationSpectrum::SetFieldScaleSetting(int settingValue)
+{
+    m_FieldScale = settingValue / 100.0f * 3.0f;
+}
+
 //-- SetSetting ---------------------------------------------------------------
 // Set a specific Setting value (called from Kodi)
 // !!! Add-on master function !!!
@@ -599,6 +621,21 @@ ADDON_STATUS CVisualizationSpectrum::SetSetting(const std::string& settingName,
   else if (settingName == "rotation_angle")
   {
     m_y_fixedAngle = settingValue.GetInt();
+    return ADDON_STATUS_OK;
+  }
+  else if (settingName == "rotation_x")
+  {
+    m_x_fixedAngle = settingValue.GetInt();
+    return ADDON_STATUS_OK;
+  }
+  else if (settingName == "offset_y")
+  {
+    SetBaseSetting(settingValue.GetInt());
+    return ADDON_STATUS_OK;
+  }
+  else if (settingName == "field_size")
+  {
+    SetFieldScaleSetting(settingValue.GetInt());
     return ADDON_STATUS_OK;
   }
 
