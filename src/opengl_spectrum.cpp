@@ -126,7 +126,7 @@ private:
 
 CVisualizationSpectrum::CVisualizationSpectrum()
   : m_mode(GL_TRIANGLES),
-    m_x_angle(20.0f),
+    m_x_angle(10.0f),      // around 11° on 16:9 looks similar to the former 20° on squeezed 1:1
     m_y_angle(45.0f),
     m_z_angle(0.0f),
     m_x_speed(0.0f),
@@ -187,11 +187,13 @@ bool CVisualizationSpectrum::Start(int channels,
   m_x_speed = 0.0f;
   m_y_speed = 0.5f;
   m_z_speed = 0.0f;
-  m_x_angle = 20.0f;
+  m_x_angle = 10.0f;
   m_y_angle = 45.0f;
   m_z_angle = 0.0f;
 
-  m_projMat = glm::frustum(-1.0f, 1.0f, -1.0f, 1.0f, 1.5f, 10.0f);
+  m_projMat = glm::frustum(-1.0f, 1.0f,
+                           -1.0f * Height() / Width(), 1.0f * Height() / Width(),
+                            1.5f, 10.0f);
 
 #ifdef HAS_GL
   glGenBuffers(2, m_vertexVBO);
@@ -270,7 +272,7 @@ void CVisualizationSpectrum::Render()
   // Clear the screen
   glClear(GL_DEPTH_BUFFER_BIT);
 
-  m_modelMat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -5.0f));
+  m_modelMat = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f * Height() / Width(), -5.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_x_angle), glm::vec3(1.0f, 0.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_y_angle), glm::vec3(0.0f, 1.0f, 0.0f));
   m_modelMat = glm::rotate(m_modelMat, glm::radians(m_z_angle), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -511,6 +513,7 @@ void CVisualizationSpectrum::SetBarHeightSetting(int settingValue)
     default:
       m_scale = 0.5f;
   }
+  m_scale /= 16.0f / 9.0f; // fix height to match the former 1:1-frustum at least on 16:9 displays
 }
 
 void CVisualizationSpectrum::SetSpeedSetting(int settingValue)
