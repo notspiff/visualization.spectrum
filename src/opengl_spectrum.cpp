@@ -79,7 +79,7 @@ private:
   // pFreqData[i] - joined stereo!
   // Near 1/3 octaves per bar where possible (bar# 4 to 15)
   // ** TODO ** Don't expect iFreqDataLength == 256
-  int m_xscale[NUM_BANDS + 1] = {0, 2, 4, 6, 8, 10, 12, 16, 22, 28, 34, 44, 56, 70, 90, 114, 256}; 
+  int m_xscale[NUM_BANDS + 1] = {0, 2, 4, 6, 8, 10, 12, 16, 20, 26, 32, 42, 54, 68, 88, 112, 256};
   GLfloat m_hscale[NUM_BANDS];
   GLfloat m_heights[NUM_BANDS][NUM_BANDS];
   GLfloat m_cHeights[NUM_BANDS][NUM_BANDS];
