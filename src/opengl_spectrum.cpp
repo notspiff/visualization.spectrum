@@ -229,22 +229,14 @@ void CVisualizationSpectrum::Render()
 
   add_bars();
 
-  m_x_angle += m_x_speed;
-  if (m_x_angle >= 360.0f)
-    m_x_angle -= 360.0f;
+  m_x_angle = std::fmod(m_x_angle + m_x_speed, 360.0f);
 
   if (m_y_fixedAngle < 0.0f)
-  {
-    m_y_angle += m_y_speed;
-    if (m_y_angle >= 360.0f)
-      m_y_angle -= 360.0f;
-  }
+    m_y_angle = std::fmod(m_y_angle + m_y_speed, 360.0f);
   else
     m_y_angle = m_y_fixedAngle;
 
-  m_z_angle += m_z_speed;
-  if (m_z_angle >= 360.0f)
-    m_z_angle -= 360.0f;
+  m_z_angle = std::fmod(m_z_angle + m_z_speed, 360.0f);
 
 #ifdef HAS_GL
   glBindBuffer(GL_ARRAY_BUFFER, m_vertexVBO[0]);
