@@ -147,7 +147,7 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   
   for (int x = 0; x < NUM_BANDS; x++)
   {
-    // Divide by 2 and discard reminder because of joined stereo
+    // Divide by 2 and discard remainder because of joined stereo
     freq_lo = m_xscale[x] / 2 + 1; // pFreqData[0] frequency is 1 (no DC values)
     freq_hi = m_xscale[x + 1] / 2; // next band start frequency - 1
     
@@ -159,7 +159,8 @@ CVisualizationSpectrum::CVisualizationSpectrum()
   SetModeSetting(kodi::GetSettingInt("mode"));
   m_y_fixedAngle = kodi::GetSettingInt("rotation_angle");
   m_x_fixedAngle = kodi::GetSettingInt("rotation_x", 10);
-  SetBaseSetting(kodi::GetSettingInt("offset_y", -25));  // replace translate -0.5 * (H=9) / (W=16)
+  // Default to -0.25 (-25%) replacing former glm::translate by -0.5 (was squeezed from 1:1 to 16:9)
+  SetBaseSetting(kodi::GetSettingInt("offset_y", -25));
   SetFieldScaleSetting(kodi::GetSettingInt("field_size", 100));
 
   m_vertex_buffer_data.resize(NUM_BANDS * NUM_BANDS * 6 * 2 * 3);
@@ -353,7 +354,7 @@ void CVisualizationSpectrum::add_quad(glm::vec3 a,
   m_vertex_buffer_data.push_back(d); // line-mode: 2nd line
   m_vertex_buffer_data.push_back(a); //
   
-  for (int i=0; i < 6; i++)
+  for (int i = 0; i < 6; i++)
   {
     m_color_buffer_data.push_back(color);
   }
@@ -487,7 +488,7 @@ void CVisualizationSpectrum::AudioData(const float* pAudioData,
     pow *= 0.5f;
     pow *= m_hscale[x]; // multiply with bands per octave to finally get the power per octave factor
 
-    // CDDA-dB-scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
+    // CDDA-like scale: -96 dB/octave .. 0 dB/octave -> 0.0 .. 1.0
     h = pow > 0.0f ? 10.0f * log10f(pow) / 96.0f + 1.0f : 0.0f;
 
     if (h < 0.0f) // cut-off (bottom of bar)
