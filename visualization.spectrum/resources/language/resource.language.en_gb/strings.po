@@ -107,13 +107,9 @@ msgid "Base"
 msgstr ""
 
 msgctxt "#30022"
-msgid "%+i%%"
+msgid "{0:d}%"
 msgstr ""
 
 msgctxt "#30023"
 msgid "Field size"
-msgstr ""
-
-msgctxt "#30024"
-msgid "%i%%"
 msgstr ""

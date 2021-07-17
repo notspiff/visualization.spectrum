@@ -120,7 +120,7 @@
             <maximum>150</maximum>
           </constraints>
           <control type="slider" format="integer">
-            <formatlabel>30024</formatlabel>
+            <formatlabel>30022</formatlabel>
             <popup>false</popup>
           </control>
           <dependencies>
