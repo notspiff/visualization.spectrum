@@ -81,6 +81,14 @@
             <formatlabel>30018</formatlabel>
             <popup>false</popup>
           </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
         </setting>
 
         <setting id="offset_y" type="integer" label="30021">
@@ -94,6 +102,14 @@
             <formatlabel>30022</formatlabel>
             <popup>false</popup>
           </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
         </setting>
 
         <setting id="field_size" type="integer" label="30023">
@@ -107,6 +123,14 @@
             <formatlabel>30024</formatlabel>
             <popup>false</popup>
           </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
         </setting>
 
       </group>
