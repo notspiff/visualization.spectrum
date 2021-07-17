@@ -53,6 +53,7 @@
               <option label="30011">1</option>
               <option label="30012">2</option>
               <option label="30013">3</option>
+              <option label="30014">4</option>
             </options>
           </constraints>
           <control type="spinner" format="string" />
@@ -68,6 +69,70 @@
             <formatlabel>30018</formatlabel>
           </control>
         </setting>
+
+        <setting id="rotation_x" type="integer" label="30020">
+          <default>10</default>
+          <constraints>
+            <minimum>0</minimum>
+            <step>5</step>
+            <maximum>90</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30018</formatlabel>
+            <popup>false</popup>
+          </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+
+        <setting id="offset_y" type="integer" label="30021">
+          <default>-25</default>
+          <constraints>
+            <minimum>-150</minimum>
+            <step>5</step>
+            <maximum>100</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30022</formatlabel>
+            <popup>false</popup>
+          </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+
+        <setting id="field_size" type="integer" label="30023">
+          <default>100</default>
+          <constraints>
+            <minimum>50</minimum>
+            <step>5</step>
+            <maximum>150</maximum>
+          </constraints>
+          <control type="slider" format="integer">
+            <formatlabel>30022</formatlabel>
+            <popup>false</popup>
+          </control>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="IsDefined">HAS_GL</condition>
+                <condition on="property" name="IsDefined">HAS_GLES</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+
       </group>
     </category>
   </section>

@@ -105,3 +105,19 @@ msgstr ""
 msgctxt "#30019"
 msgid "Turn continuously"
 msgstr ""
+
+msgctxt "#30020"
+msgid "Tilt"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Base"
+msgstr ""
+
+msgctxt "#30022"
+msgid "{0:d}%"
+msgstr ""
+
+msgctxt "#30023"
+msgid "Field size"
+msgstr ""
